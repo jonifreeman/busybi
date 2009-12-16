@@ -79,20 +79,3 @@ class Server(address: String, port: Int, handler: Actor) {
     }
   }
 }
-
-object Test {
-  def main(args: Array[String]) = {
-    val handler = actor {
-      loop {
-        react {
-          case Connect(b) => println("connected to " + b)
-          case Message(b, msg) => b.send("out ! " + msg.reverse)
-          case Disconnect(b) => println("disconnecting " + b)
-        }
-      }
-    }
-
-    val s = new Server("localhost", 1234, handler)
-    s.start
-  }
-}
