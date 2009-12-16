@@ -46,7 +46,7 @@ class Server(address: String, port: Int, handler: Actor) {
             "Connection: Upgrade\r\n" +
             "WebSocket-Origin: http://localhost\r\n" +
             "WebSocket-Location: " +
-            "  ws://localhost:1234/websession\r\n\r\n"
+            "  ws://localhost:" + port + "/websession\r\n\r\n"
           val out = new BufferedOutputStream(s.getOutputStream)
           val browser = Browser()(out)
           out.write(handshake.getBytes("UTF-8"))
