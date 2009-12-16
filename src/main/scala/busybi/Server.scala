@@ -9,12 +9,12 @@ trait Request
 case class Message(browser: Browser, content: String) extends Request
 case class Connect(browser: Browser) extends Request
 
-case class Browser()(val out: BufferedWriter) {
+case class Browser()(val out: OutputStream) {
   def send(s: String) = {
     println("sending " + s)
     out.write(0)
-    out.write(s)
-    out.write(0xff)
+    out.write(s.getBytes("UTF-8"))
+    out.write(255)
     out.flush
   }
 
@@ -46,9 +46,9 @@ class Server(address: String, port: Int, handler: Actor) {
             "WebSocket-Origin: http://localhost\r\n" +
             "WebSocket-Location: " +
             "  ws://localhost:1234/websession\r\n\r\n"
-          val out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream))
+          val out = new BufferedOutputStream(s.getOutputStream)
           val browser = Browser()(out)
-          out.write(handshake)
+          out.write(handshake.getBytes("UTF-8"))
           out.flush
           handler ! Connect(browser)
           val in = new BufferedReader(new InputStreamReader(s.getInputStream))
@@ -68,12 +68,12 @@ class Server(address: String, port: Int, handler: Actor) {
         c = in.read
         content.append(c.toChar)
       }
+      content.setLength(content.length-1)
       handler ! Message(browser, content.toString)
       read(browser, in)
     }
   }
 }
-
 
 object Test {
   def main(args: Array[String]) = {
@@ -81,7 +81,7 @@ object Test {
       loop {
         react {
           case Connect(b) => println("connected to " + b)
-          case Message(b, msg) => println("got " + msg)
+          case Message(b, msg) => b.send("out ! " + msg.reverse)
         }
       }
     }
