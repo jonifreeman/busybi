@@ -9,11 +9,12 @@ trait Request
 case class Message(browser: Browser, content: String) extends Request
 case class Connect(browser: Browser) extends Request
 
-case class Browser()(val socket: Socket) {
-  lazy val out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
-
+case class Browser()(val out: BufferedWriter) {
   def send(s: String) = {
+    println("sending " + s)
+    out.write(0)
     out.write(s)
+    out.write(0xff)
     out.flush
   }
 
@@ -45,10 +46,30 @@ class Server(address: String, port: Int, handler: Actor) {
             "WebSocket-Origin: http://localhost\r\n" +
             "WebSocket-Location: " +
             "  ws://localhost:1234/websession\r\n\r\n"
-          val browser = Browser()(s)
-          browser.send(handshake)
+          val out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream))
+          val browser = Browser()(out)
+          out.write(handshake)
+          out.flush
           handler ! Connect(browser)
+          val in = new BufferedReader(new InputStreamReader(s.getInputStream))
+          skipHeaders(in)
+          read(browser, in)
       }
+    }
+    
+    private def skipHeaders(in: BufferedReader) = 
+      while (in.readLine != "") {}
+
+    // FIXME check spec, optimize, Content-Length
+    private def read(browser: Browser, in: BufferedReader): Unit = {
+      var c = -1
+      val content = new StringBuilder
+      while (c != 0xfffd) {
+        c = in.read
+        content.append(c.toChar)
+      }
+      handler ! Message(browser, content.toString)
+      read(browser, in)
     }
   }
 }
