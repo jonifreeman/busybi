@@ -8,6 +8,7 @@ import scala.actors.Actor._
 trait Request
 case class Message(browser: Browser, content: String) extends Request
 case class Connect(browser: Browser) extends Request
+case class Disconnect(browser: Browser) extends Request
 
 case class Browser()(val out: OutputStream) {
   def send(s: String) = {
@@ -34,11 +35,11 @@ class Server(address: String, port: Int, handler: Actor) {
     }
   }
 
-  // FIXME handle close
   class ConnectionHandler extends Actor {
     def act = loop {
       react {
         case ClientSocket(s) =>
+          // FIXME remove hardcodings
           val handshake = 
             "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" +
             "Upgrade: WebSocket\r\n" + 
@@ -62,10 +63,14 @@ class Server(address: String, port: Int, handler: Actor) {
 
     // FIXME check spec, optimize, Content-Length
     private def read(browser: Browser, in: BufferedReader): Unit = {
-      var c = -1
+      var c = -9999
       val content = new StringBuilder
       while (c != 0xfffd) {
         c = in.read
+        if (c == -1) {
+          handler ! Disconnect(browser)
+          return;
+        }
         content.append(c.toChar)
       }
       content.setLength(content.length-1)
@@ -82,6 +87,7 @@ object Test {
         react {
           case Connect(b) => println("connected to " + b)
           case Message(b, msg) => b.send("out ! " + msg.reverse)
+          case Disconnect(b) => println("disconnecting " + b)
         }
       }
     }
