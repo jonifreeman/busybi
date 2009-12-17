@@ -10,7 +10,7 @@ case class Message(browser: Browser, content: String) extends Request
 case class Connect(browser: Browser) extends Request
 case class Disconnect(browser: Browser) extends Request
 
-case class Browser()(val out: OutputStream) {
+class Browser(out: OutputStream) {
   def send(s: String) = {
     println("sending " + s)
     out.write(0)
@@ -22,20 +22,23 @@ case class Browser()(val out: OutputStream) {
   def close = out.close
 }
 
+object Browser {
+  def unapply(b: Browser): Option[Browser] = Some(b)
+}
+
 class Server(address: String, port: Int, handler: Actor) {
   case class ClientSocket(socket: Socket)
 
-  val conn = new ConnectionHandler
-
   def start = {
-    conn.start
     val serverSocket = new ServerSocket(port)    
     while (true) {
-      conn ! ClientSocket(serverSocket.accept)
+      new ConnectionHandler ! ClientSocket(serverSocket.accept)
     }
   }
 
   class ConnectionHandler extends Actor {
+    start
+
     def act = loop {
       react {
         case ClientSocket(s) =>
@@ -48,7 +51,7 @@ class Server(address: String, port: Int, handler: Actor) {
             "WebSocket-Location: " +
             "  ws://localhost:" + port + "/websession\r\n\r\n"
           val out = new BufferedOutputStream(s.getOutputStream)
-          val browser = Browser()(out)
+          val browser = new Browser(out)
           out.write(handshake.getBytes("UTF-8"))
           out.flush
           handler ! Connect(browser)
@@ -58,8 +61,7 @@ class Server(address: String, port: Int, handler: Actor) {
       }
     }
     
-    private def skipHeaders(in: BufferedReader) = 
-      while (in.readLine != "") {}
+    private def skipHeaders(in: BufferedReader) = while (in.readLine != "") {}
 
     // FIXME check spec, optimize, Content-Length
     private def read(browser: Browser, in: BufferedReader): Unit = {
