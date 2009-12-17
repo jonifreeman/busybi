@@ -1,40 +1,42 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-    <script src="jquery-1.3.2.min.js"></script>
+  <script src="http://www.google.com/jsapi"></script>
 
-    <script>
-      $(document).ready(function() {
-        var server;
+  <script>
+    google.load("jquery", "1");
 
-        if ("WebSocket" in window) {
-          server = new WebSocket("ws://localhost:1234/websession");
+    google.setOnLoadCallback(function() {
+      var server;
 
-          server.onopen = function() {
-          };
+      if ("WebSocket" in window) {
+        server = new WebSocket("ws://localhost:1234/websession");
 
-          send = function() {
-            var val = $("#message").val();
-            $("#message").val("");
-            server.send(val);
-            return true;
-          };
-
-          server.onmessage = function(evt) {
-            var data = evt.data;
-            var i = data.indexOf("!");
-            var tag = data.slice(0,i);
-            var val = data.slice(i+1);
-            $("#" + tag).append("<p>" + val);
-          };
-
-          server.onclose = function() {
-            alert("Server down!");
-          };
-        } else {
-          alert("OMG! You do not have web sockets :(");
+        server.onopen = function() {
         };
-      });
-    </script>
+
+        send = function() {
+          var val = $("#message").val();
+          $("#message").val("");
+          server.send(val);
+          return true;
+        };
+
+        server.onmessage = function(evt) {
+          var data = evt.data;
+          var i = data.indexOf("!");
+          var tag = data.slice(0,i);
+          var val = data.slice(i+1);
+          $("#" + tag).append("<p>" + val);
+        };
+
+        server.onclose = function() {
+          alert("Server down!");
+        };
+      } else {
+        alert("OMG! You do not have web sockets :(");
+      };
+    });
+  </script>
 <body>
 
   <h1>Chat</h1>
