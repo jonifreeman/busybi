@@ -3,9 +3,9 @@ import busybi._
 
 object Chat {
   def main(args: Array[String]) = {
-    var browsers = List[Browser]()
-
     val handler = actor {
+      var browsers = List[Browser]()
+
       loop {
         react {
           case Connect(b) => 
@@ -19,7 +19,6 @@ object Chat {
       }
     }
 
-    val s = new Server("localhost", 1234, handler)
-    s.start
+    new Server("localhost", 1234, handler).start
   }
 }
