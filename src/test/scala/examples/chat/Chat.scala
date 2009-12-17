@@ -3,22 +3,19 @@ import busybi._
 
 object Chat {
   def main(args: Array[String]) = {
-    val handler = actor {
-      var browsers = List[Browser]()
-
-      loop {
-        react {
-          case Connect(b) => 
-            println("new browser")
-            browsers = b :: browsers
-          case Message(b, msg) => browsers.foreach(_.send("out ! " + msg))
-          case Disconnect(b) => 
-            println("browser left")
-            browsers = browsers.remove(_ eq b)
-        }
+    val chat = new App(List[Browser]()) {
+      receive {
+        case (bs, Connect(b)) => 
+          println("new browser " + b)
+          (b :: bs, Stream.empty)
+        case (bs, Message(b, msg)) => 
+          (bs, bs.map(Response(_, "out ! " + msg)).toStream)
+        case (bs, Disconnect(b)) => 
+          println("browser left " + b)
+          (bs.remove(_ eq b), Stream.empty)
       }
     }
 
-    new Server("localhost", 1234, handler).start
+    new Server("localhost", 1234, chat).start
   }
 }
