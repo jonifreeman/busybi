@@ -42,8 +42,9 @@ object Browser {
 class Server[S](address: String, port: Int, app: App[S]) {
   case class ClientSocket(socket: Socket)
 
-  // FIXME!!! shared state
-  var state: S = app.initial
+  // FIXME replace with STM? concurrent requests can see different view of state
+  val state = new scala.concurrent.SyncVar[S]
+  state.set(app.initial)
 
   def start = {
     val serverSocket = new ServerSocket(port)    
@@ -69,7 +70,7 @@ class Server[S](address: String, port: Int, app: App[S]) {
         val browser = new Browser(out)
         out.write(handshake.getBytes("UTF-8"))
         out.flush
-        state = flush(app.f(state, Connect(browser)))
+        state.set(flush(app.f(state.get, Connect(browser))))
         val in = new BufferedReader(new InputStreamReader(s.getInputStream))
         skipHeaders(in)
         read(browser, in)
@@ -90,13 +91,13 @@ class Server[S](address: String, port: Int, app: App[S]) {
       while (c != 0xfffd) {
         c = in.read
         if (c == -1) {
-          state = flush(app.f(state, Disconnect(browser)))
+          state.set(flush(app.f(state.get, Disconnect(browser))))
           return;
         }
         content.append(c.toChar)
       }
       content.setLength(content.length-1)
-      state = flush(app.f(state, Message(browser, content.toString)))
+      state.set(flush(app.f(state.get, Message(browser, content.toString))))
       read(browser, in)
     }
   }
